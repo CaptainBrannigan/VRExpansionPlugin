@@ -116,7 +116,7 @@ void AVRPlayerController::PlayerTick(float DeltaTime)
 	}
 }
 
-UVRLocalPlayer::UVRLocalPlayer(const FObjectInitializer & ObjectInitializer)
-	: Super(ObjectInitializer)
-{
-}
+//UVRLocalPlayer::UVRLocalPlayer(const FObjectInitializer & ObjectInitializer)
+//	: Super(ObjectInitializer)
+//{
+//}

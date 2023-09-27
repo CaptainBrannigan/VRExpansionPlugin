@@ -74,6 +74,12 @@ public class VRExpansionPlugin : ModuleRules
                     "XRBase"
                     //"Renderer",
                     //"UtilityShaders"
+                    , "LyraGame"
+                    , "GameplayTags"
+                    , "GameplayTasks"
+                    , "GameplayAbilities"
+                    , "CommonGame"
+                    , "ModularGameplayActors"
         });
 
         //if(Target.bUseChaos)

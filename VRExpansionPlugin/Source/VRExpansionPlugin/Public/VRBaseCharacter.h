@@ -5,7 +5,7 @@
 #include "VRBPDatatypes.h"
 #include "VRBaseCharacterMovementComponent.h"
 #include "ReplicatedVRCameraComponent.h"
-#include "GameFramework/Character.h"
+#include "Character/LyraCharacter.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "VRBaseCharacter.generated.h"
 
@@ -266,7 +266,7 @@ struct TStructOpsTypeTraits< FVRReplicatedCapsuleHeight > : public TStructOpsTyp
 };
 
 UCLASS()
-class VREXPANSIONPLUGIN_API AVRBaseCharacter : public ACharacter
+class VREXPANSIONPLUGIN_API AVRBaseCharacter : public ALyraCharacter
 {
 	GENERATED_BODY()
 

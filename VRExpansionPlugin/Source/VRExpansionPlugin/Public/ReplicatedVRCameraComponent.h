@@ -5,6 +5,7 @@
 #include "VRBPDatatypes.h"
 //#include "Net/UnrealNetwork.h"
 #include "Camera/CameraComponent.h"
+#include "Camera/LyraCameraComponent.h"
 #include "ReplicatedVRCameraComponent.generated.h"
 
 class AVRBaseCharacter;
@@ -14,7 +15,7 @@ class AVRCharacter;
 * An overridden camera component that replicates its location in multiplayer
 */
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = VRExpansionLibrary)
-class VREXPANSIONPLUGIN_API UReplicatedVRCameraComponent : public UCameraComponent
+class VREXPANSIONPLUGIN_API UReplicatedVRCameraComponent : public ULyraCameraComponent
 {
 	GENERATED_BODY()
 

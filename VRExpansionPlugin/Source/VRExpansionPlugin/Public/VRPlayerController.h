@@ -2,14 +2,14 @@
 
 #pragma once
 #include "CoreMinimal.h"
-#include "GameFramework/PlayerController.h"
-#include "Engine/LocalPlayer.h"
+#include "Player/LyraPlayerController.h"
+#include "Player/LyraLocalPlayer.h"
 #include "VRPlayerController.generated.h"
 
 // A base player controller specifically for handling OnCameraManagerCreated.
 // Used in case you don't want the VRPlayerCharacter changes in a PendingPlayerController
 UCLASS()
-class VREXPANSIONPLUGIN_API AVRBasePlayerController : public APlayerController
+class VREXPANSIONPLUGIN_API AVRBasePlayerController : public ALyraPlayerController
 {
 	GENERATED_BODY()
 
@@ -67,9 +67,10 @@ public:
 * Utility class, when set as the default local player it will spawn the target PlayerController class instead as the pending player controller
 */
 UCLASS(Blueprintable, meta = (ShortTooltip = "Utility class, when set as the default local player it will spawn the target PlayerController class instead as the pending one"))
-class VREXPANSIONPLUGIN_API UVRLocalPlayer : public ULocalPlayer
+class VREXPANSIONPLUGIN_API UVRLocalPlayer : public ULyraLocalPlayer
 {
-	GENERATED_UCLASS_BODY()
+	GENERATED_BODY()
+public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "LocalPlayer")
 	TSubclassOf<class APlayerController> OverridePendingLevelPlayerControllerClass;

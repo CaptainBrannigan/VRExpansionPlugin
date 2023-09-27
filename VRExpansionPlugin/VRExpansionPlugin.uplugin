@@ -32,13 +32,29 @@
     }
   ],
 	"Plugins": [
-    {
-      "Name": "ChaosVehiclesPlugin",
-      "Enabled": true
-    },
-    {
-      "Name": "XRBase",
-      "Enabled": true
-    }
+		{
+			"Name": "ChaosVehiclesPlugin",
+			"Enabled": true
+		},
+		{
+			"Name": "XRBase",
+			"Enabled": true
+		},
+		{
+			"Name": "GameplayAbilities",
+			"Enabled": true
+		},
+		{
+			"Name": "CommonGame",
+			"Enabled": true
+		},
+		{
+			"Name": "ModularGameplayActors",
+			"Enabled": true
+		},
+		{
+			"Name": "ModularGameplay",
+			"Enabled": true
+		}
 	]
 }
