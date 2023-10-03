@@ -5,6 +5,7 @@
 #include "CharacterMovementCompTypes.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Character/LyraCharacterMovementComponent.h"
 #include "VRBaseCharacterMovementComponent.generated.h"
 
 class AVRBaseCharacter;
@@ -21,7 +22,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FVROnPerformClimbingStepUp, FVector,
 * The base class for our VR characters, contains common logic across them, not to be used directly
 */
 UCLASS()
-class VREXPANSIONPLUGIN_API UVRBaseCharacterMovementComponent : public UCharacterMovementComponent
+class VREXPANSIONPLUGIN_API UVRBaseCharacterMovementComponent : public ULyraCharacterMovementComponent
 {
 	GENERATED_BODY()
 public:
