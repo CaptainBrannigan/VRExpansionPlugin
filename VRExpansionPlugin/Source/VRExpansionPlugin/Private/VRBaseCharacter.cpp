@@ -307,7 +307,7 @@ void AVRBaseCharacter::Server_SeatedSnapTurn_Implementation(float Yaw)
 
 bool AVRBaseCharacter::Server_SeatedSnapTurn_Validate(float Yaw)
 {
-	return Yaw > 0.0f;
+	return true;
 }
 
 void AVRBaseCharacter::OnCustomMoveActionPerformed_Implementation(EVRMoveAction MoveActionType, FVector MoveActionVector, FRotator MoveActionRotator, uint8 MoveActionFlags)
@@ -880,7 +880,7 @@ FVector AVRBaseCharacter::AddActorWorldRotationVR(FRotator DeltaRot, bool bUseYa
 	}
 
 	NewLocation = OrigLocation + NewRotation.RotateVector(PivotPoint);
-	NewRotation = (DeltaRot.Quaternion() * NewRotation.Quaternion()).Rotator();
+	NewRotation = (NewRotation.Quaternion() * DeltaRot.Quaternion()).Rotator();
 	NewLocation -= NewRotation.RotateVector(PivotPoint);
 
 	if (bUseControllerRotationYaw && OwningController /*&& IsLocallyControlled()*/)

@@ -29,6 +29,7 @@
 
 #include "Engine/DemoNetDriver.h"
 #include "Engine/NetworkObjectList.h"
+#include "UObject/Package.h"
 
 #include "VRRootComponent.h"
 #include "WorldCollision.h"
@@ -3914,13 +3915,16 @@ void UVRCharacterMovementComponent::ClientHandleMoveResponse(const FCharacterMov
 			ClientAdjustPositionVR_Implementation(
 				MoveResponse.ClientAdjustment.TimeStamp,
 				MoveResponse.ClientAdjustment.NewLoc,
-				FRotator::CompressAxisToShort(MoveResponse.ClientAdjustment.NewRot.Yaw),
+				//FRotator::CompressAxisToShort(MoveResponse.ClientAdjustment.NewRot.Yaw),
 				MoveResponse.ClientAdjustment.NewVel,
 				MoveResponse.ClientAdjustment.NewBase,
 				MoveResponse.ClientAdjustment.NewBaseBoneName,
 				MoveResponse.bHasBase,
 				MoveResponse.ClientAdjustment.bBaseRelativePosition,
-				MoveResponse.ClientAdjustment.MovementMode);
+				MoveResponse.ClientAdjustment.MovementMode,
+				MoveResponse.bHasRotation ? MoveResponse.ClientAdjustment.NewRot : TOptional<FRotator>(),
+				MoveResponse.ClientAdjustment.GravityDirection
+			);
 
 				// #TODO: Epic added rotation adjustment in 5.1
 				//MoveResponse.bHasRotation ? MoveResponse.ClientAdjustment.NewRot : TOptional<FRotator>()
@@ -3934,14 +3938,15 @@ void UVRCharacterMovementComponent::ClientAdjustPositionVR_Implementation
 (
 	float TimeStamp,
 	FVector NewLocation,
-	uint16 NewYaw,
+	//uint16 NewYaw,
 	FVector NewVelocity,
 	UPrimitiveComponent* NewBase,
 	FName NewBaseBoneName,
 	bool bHasBase,
 	bool bBaseRelativePosition,
 	uint8 ServerMovementMode,
-	TOptional<FRotator> OptionalRotation
+	TOptional<FRotator> OptionalRotation,
+	TOptional<FVector> OptionalGravityDirection
 )
 {
 	if (!HasValidData() || !IsActive())
@@ -3982,7 +3987,7 @@ void UVRCharacterMovementComponent::ClientAdjustPositionVR_Implementation
 
 	// Trying to use epics rotation code now
 	// Comment this when we port to it
-	if (!bUseClientControlRotation)
+	/*if (!bUseClientControlRotation)
 	{
 		float YawValue = FRotator::DecompressAxisFromShort(NewYaw);
 		// Trust the server's control yaw
@@ -4003,7 +4008,7 @@ void UVRCharacterMovementComponent::ClientAdjustPositionVR_Implementation
 				BaseVRCharacterOwner->SetActorRotation(FRotator(0.f, YawValue, 0.f));
 			}
 		}
-	}
+	}*/
 
 	ClientData->AckMove(MoveIndex, *this);
 
@@ -4041,11 +4046,14 @@ void UVRCharacterMovementComponent::ClientAdjustPositionVR_Implementation
 
 	// #TODO: Currently epic isn't using the gravity direction in corrections, which should be incorrect
 	// Trigger event
-	OnClientCorrectionReceived(*ClientData, TimeStamp, WorldShiftedNewLocation, NewVelocity, NewBase, NewBaseBoneName, bHasBase, bBaseRelativePosition, ServerMovementMode, DefaultGravityDirection);
+	FVector GravityCorrection = OptionalGravityDirection.IsSet() ? OptionalGravityDirection.GetValue() : DefaultGravityDirection;
+	OnClientCorrectionReceived(*ClientData, TimeStamp, WorldShiftedNewLocation, NewVelocity, NewBase, NewBaseBoneName, bHasBase, bBaseRelativePosition, ServerMovementMode, GravityCorrection);
 
 	// Trust the server's positioning.
 	if (UpdatedComponent)
 	{
+		// Orient to new gravity value
+		SetCharacterToNewGravity(GravityCorrection, bAutoOrientToFloorNormal);
 
 		// #TODO: Epics 5.1 rotation enforce, we use our own currently
 		/*if (OptionalRotation.IsSet())
@@ -4059,23 +4067,58 @@ void UVRCharacterMovementComponent::ClientAdjustPositionVR_Implementation
 
 		if (bRunClientCorrectionToHMD && BaseVRCharacterOwner)
 		{
-			/*if (OptionalRotation.IsSet())
+			if (OptionalRotation.IsSet())
 			{
 				BaseVRCharacterOwner->SetActorLocationAndRotationVR(WorldShiftedNewLocation, OptionalRotation.GetValue(), false, false, true, true);
 				//BaseVRCharacterOwner->SetActorRotation(OptionalRotation.GetValue(), ETeleportType::TeleportPhysics);
+			
+						// Trust the server's control yaw
+				if (ClientData->LastAckedMove.IsValid() && !ClientData->LastAckedMove->SavedControlRotation.Equals(OptionalRotation.GetValue()))
+				{
+					if (BaseVRCharacterOwner)
+					{
+						if (BaseVRCharacterOwner->bUseControllerRotationYaw)
+						{
+							AController* myController = BaseVRCharacterOwner->GetController();
+							if (myController)
+							{
+								//FRotator newRot = myController->GetControlRotation();
+								myController->SetControlRotation(OptionalRotation.GetValue());//(ClientData->LastAckedMove->SavedControlRotation);
+							}
+						}
+					}
+				}
+			
 			}
-			else*/
+			else
 			{
 				BaseVRCharacterOwner->SetActorLocationVR(WorldShiftedNewLocation, true);
 			}
 		}
 		else
 		{
-			/*if (OptionalRotation.IsSet())
+			if (OptionalRotation.IsSet())
 			{
 				UpdatedComponent->SetWorldLocationAndRotation(WorldShiftedNewLocation, OptionalRotation.GetValue(), false, nullptr, ETeleportType::TeleportPhysics);
+
+				// Trust the server's control yaw
+				if (ClientData->LastAckedMove.IsValid() && !ClientData->LastAckedMove->SavedControlRotation.Equals(OptionalRotation.GetValue()))
+				{
+					if (BaseVRCharacterOwner)
+					{
+						if (BaseVRCharacterOwner->bUseControllerRotationYaw)
+						{
+							AController* myController = BaseVRCharacterOwner->GetController();
+							if (myController)
+							{
+								//FRotator newRot = myController->GetControlRotation();
+								myController->SetControlRotation(OptionalRotation.GetValue());//(ClientData->LastAckedMove->SavedControlRotation);
+							}
+						}
+					}
+				}
 			}
-			else*/
+			else
 			{
 				UpdatedComponent->SetWorldLocation(WorldShiftedNewLocation, false, nullptr, ETeleportType::TeleportPhysics);
 			}
@@ -4112,13 +4155,13 @@ void UVRCharacterMovementComponent::ClientAdjustPositionVR_Implementation
 				FinalBaseBoneName = NAME_None;
 			}
 
-			if (bAutoOrientToFloorNormal && CurrentFloor.IsWalkableFloor())
+			/*if (bAutoOrientToFloorNormal && CurrentFloor.IsWalkableFloor())
 			{
 				// Auto Align to the new floor normal
 				// Set gravity direction to the new floor normal, snap to new rotation on correction
 				// #TODO: Might need to entirely remove this and let the correction set everything?
 				AutoTraceAndSetCharacterToNewGravity(CurrentFloor.HitResult, 0.0f);
-			}
+			}*/
 		}
 	}
 	SetBase(FinalBase, FinalBaseBoneName);

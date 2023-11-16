@@ -71,7 +71,8 @@ public class VRExpansionPlugin : ModuleRules
                     "NavigationSystem",
                     "AIModule",
                     "AnimGraphRuntime",
-                    "XRBase"
+                    "XRBase",
+                    "GameplayTags"
                     //"Renderer",
                     //"UtilityShaders"
                     , "LyraGame"
@@ -88,7 +89,6 @@ public class VRExpansionPlugin : ModuleRules
             PublicDependencyModuleNames.Add("ChaosVehicles");
         //}
 
-
         PrivateDependencyModuleNames.AddRange(
             new string[] 
             {
@@ -102,10 +102,7 @@ public class VRExpansionPlugin : ModuleRules
 				"ApplicationCore",
                 "RenderCore",
                // "ShaderCore",
-                "NetworkReplayStreaming",
-                "AIModule",
-                "UMG",
-                "GameplayTags"
+                "NetworkReplayStreaming"
                 //"Renderer",
                // "UtilityShaders"
             });
