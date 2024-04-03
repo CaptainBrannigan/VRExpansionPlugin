@@ -146,7 +146,7 @@ bool UReplicatedVRCameraComponent::HasTrackingParameters()
 void UReplicatedVRCameraComponent::ApplyTrackingParameters(FVector &OriginalPosition, bool bSkipLocZero)
 {
 	// I'm keeping the original values here as it lets me send them out for seated mode
-	if (!bSkipLocZero /*&& ((AttachChar && !AttachChar->bRetainRoomscale))*/)
+	if (!bSkipLocZero && (AttachChar && !AttachChar->bRetainRoomscale))
 	{
 		OriginalPosition.X = 0;
 		OriginalPosition.Y = 0;	
@@ -204,7 +204,7 @@ void UReplicatedVRCameraComponent::UpdateTracking(float DeltaTime)
 					Position.Y = 0.0f;
 
 					FRotator StoredCameraRotOffset = FRotator::ZeroRotator;
-					if (AttachChar->VRMovementReference->GetReplicatedMovementMode() == EVRConjoinedMovementModes::C_VRMOVE_Seated)
+					if (AttachChar->VRMovementReference && AttachChar->VRMovementReference->GetReplicatedMovementMode() == EVRConjoinedMovementModes::C_VRMOVE_Seated)
 					{
 						AttachChar->SeatInformation.InitialRelCameraTransform.Rotator();
 					}
@@ -244,7 +244,7 @@ void UReplicatedVRCameraComponent::RunNetworkedSmoothing(float DeltaTime)
 	if (AttachChar && !AttachChar->bRetainRoomscale)
 	{
 		FRotator StoredCameraRotOffset = FRotator::ZeroRotator;
-		if (AttachChar->VRMovementReference->GetReplicatedMovementMode() == EVRConjoinedMovementModes::C_VRMOVE_Seated)
+		if (AttachChar->VRMovementReference && AttachChar->VRMovementReference->GetReplicatedMovementMode() == EVRConjoinedMovementModes::C_VRMOVE_Seated)
 		{
 			AttachChar->SeatInformation.InitialRelCameraTransform.Rotator();
 		}
@@ -470,7 +470,7 @@ void UReplicatedVRCameraComponent::HandleXRCamera()
 							Position.X = 0.0f;
 							Position.Y = 0.0f;
 							//FRotator OffsetRotator = 
-							if (AttachChar->VRMovementReference->GetReplicatedMovementMode() != EVRConjoinedMovementModes::C_VRMOVE_Seated)
+							if (AttachChar->VRMovementReference && AttachChar->VRMovementReference->GetReplicatedMovementMode() != EVRConjoinedMovementModes::C_VRMOVE_Seated)
 							{
 								AttachChar->SeatInformation.InitialRelCameraTransform.Rotator();
 
@@ -521,7 +521,7 @@ void UReplicatedVRCameraComponent::OnRep_ReplicatedCameraTransform()
 		CameraPosition.Y = 0;
 
 		FRotator StoredCameraRotOffset = FRotator::ZeroRotator;
-		if (AttachChar->VRMovementReference->GetReplicatedMovementMode() == EVRConjoinedMovementModes::C_VRMOVE_Seated)
+		if (AttachChar->VRMovementReference && AttachChar->VRMovementReference->GetReplicatedMovementMode() == EVRConjoinedMovementModes::C_VRMOVE_Seated)
 		{
 			AttachChar->SeatInformation.InitialRelCameraTransform.Rotator();
 		}

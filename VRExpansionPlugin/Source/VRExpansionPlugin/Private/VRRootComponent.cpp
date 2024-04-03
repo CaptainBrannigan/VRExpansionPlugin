@@ -423,11 +423,14 @@ void UVRRootComponent::BeginPlay()
 	Super::BeginPlay();
 
 	if(AVRBaseCharacter * vrOwner = Cast<AVRBaseCharacter>(this->GetOwner()))
-	{ 
-		TargetPrimitiveComponent = vrOwner->VRReplicatedCamera;
-		owningVRChar = vrOwner;
-		//VRCameraCollider = vrOwner->VRCameraCollider;
-		return;
+	{
+		if (vrOwner->VRReplicatedCamera)
+		{
+			TargetPrimitiveComponent = vrOwner->VRReplicatedCamera;
+			owningVRChar = vrOwner;
+			//VRCameraCollider = vrOwner->VRCameraCollider;
+			return;
+		}
 	}
 	else
 	{
@@ -456,7 +459,7 @@ void UVRRootComponent::SetTrackingPaused(bool bPaused)
 
 void UVRRootComponent::UpdateCharacterCapsuleOffset()
 {
-	if (owningVRChar && !owningVRChar->bRetainRoomscale)
+	if (owningVRChar && !owningVRChar->bRetainRoomscale && owningVRChar->NetSmoother)
 	{
 		if (!FMath::IsNearlyEqual(LastCapsuleHalfHeight, CapsuleHalfHeight))
 		{
@@ -485,11 +488,13 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 	}
 
 	UVRBaseCharacterMovementComponent * CharMove = nullptr;
+	bool bRetainRoomscale = true;
 
 	// Need these for passing physics updates to character movement
 	if (IsValid(owningVRChar))
 	{
 		CharMove = Cast<UVRBaseCharacterMovementComponent>(owningVRChar->GetCharacterMovement());
+		bRetainRoomscale = owningVRChar->bRetainRoomscale;
 	}
 
 	if (IsLocallyControlled())
@@ -539,7 +544,7 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 
 		// Skip this if not retaining roomscale as we use higher initial fidelity
 		// And we can rep the values at full precision if we want too
-		if (owningVRChar->bRetainRoomscale)
+		if (bRetainRoomscale)
 		{
 			// Pre-Process this for network sends
 			curCameraLoc.X = FMath::RoundToFloat(curCameraLoc.X * 100.f) / 100.f;
@@ -549,14 +554,14 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 		
 
 		// Can adjust the relative tolerances to remove jitter and some update processing
-		if (!owningVRChar->bRetainRoomscale || (!curCameraLoc.Equals(lastCameraLoc, 0.01f) || !curCameraRot.Equals(lastCameraRot, 0.01f)))
+		if (!bRetainRoomscale || (!curCameraLoc.Equals(lastCameraLoc, 0.01f) || !curCameraRot.Equals(lastCameraRot, 0.01f)))
 		{
 			// Also calculate vector of movement for the movement component
 			FVector LastPosition = OffsetComponentToWorld.GetLocation();
 
 			bCalledUpdateTransform = false;
 
-			if (owningVRChar->bRetainRoomscale)
+			if (bRetainRoomscale)
 			{
 				// If the character movement doesn't exist or is not active/ticking
 				if (!CharMove || !CharMove->IsComponentTickEnabled() || !CharMove->IsActive())
@@ -578,7 +583,7 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 			Params.bFindInitialOverlaps = true;
 			bool bBlockingHit = false;
 
-			if (bUseWalkingCollisionOverride && owningVRChar->bRetainRoomscale)
+			if (bUseWalkingCollisionOverride && bRetainRoomscale)
 			{
 				FVector TargetWorldLocation = OffsetComponentToWorld.GetLocation();
 				bool bAllowWalkingCollision = false;
@@ -608,9 +613,9 @@ void UVRRootComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 				bHadRelativeMovement = true;
 
 			// Not supporting walking collision override currently with new pawn setup
-			if (bHadRelativeMovement || !owningVRChar->bRetainRoomscale)
+			if (bHadRelativeMovement || (owningVRChar && !owningVRChar->bRetainRoomscale))
 			{
-				if (owningVRChar->bRetainRoomscale)
+				if (bRetainRoomscale)
 				{
 					DifferenceFromLastFrame = OffsetComponentToWorld.GetLocation() - LastPosition;
 					lastCameraLoc = curCameraLoc;
@@ -756,7 +761,10 @@ void UVRRootComponent::SetSimulatePhysics(bool bSimulate)
 	{
 		if (AVRCharacter* OwningCharacter = Cast<AVRCharacter>(GetOwner()))
 		{
-			OwningCharacter->NetSmoother->SetRelativeLocation(FVector(0.f,0.f, -this->GetUnscaledCapsuleHalfHeight()));
+			if (OwningCharacter->NetSmoother)
+			{
+				OwningCharacter->NetSmoother->SetRelativeLocation(FVector(0.f,0.f, -this->GetUnscaledCapsuleHalfHeight()));
+			}
 		}	
 		this->AddWorldOffset(this->GetComponentRotation().RotateVector(FVector(0.f, 0.f, this->GetScaledCapsuleHalfHeight())), false, nullptr, ETeleportType::TeleportPhysics);
 	}
@@ -764,7 +772,10 @@ void UVRRootComponent::SetSimulatePhysics(bool bSimulate)
 	{
 		if (AVRCharacter* OwningCharacter = Cast<AVRCharacter>(GetOwner()))
 		{
-			OwningCharacter->NetSmoother->SetRelativeLocation(FVector(0.f, 0.f, 0));
+			if (OwningCharacter->NetSmoother)
+			{
+				OwningCharacter->NetSmoother->SetRelativeLocation(FVector(0.f, 0.f, 0));
+			}
 		}
 		this->AddWorldOffset(this->GetComponentRotation().RotateVector(FVector(0.f, 0.f, -this->GetScaledCapsuleHalfHeight())), false, nullptr, ETeleportType::TeleportPhysics);
 	}
