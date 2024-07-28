@@ -110,13 +110,20 @@ void AGrippableStaticMeshActor::GetLifetimeReplicatedProps(TArray< class FLifeti
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	
-	DOREPLIFETIME_CONDITION(AGrippableStaticMeshActor, GripLogicScripts, COND_Custom);
-	DOREPLIFETIME(AGrippableStaticMeshActor, bReplicateGripScripts);
-	DOREPLIFETIME(AGrippableStaticMeshActor, bRepGripSettingsAndGameplayTags);
-	DOREPLIFETIME(AGrippableStaticMeshActor, bAllowIgnoringAttachOnOwner);
-	DOREPLIFETIME(AGrippableStaticMeshActor, ClientAuthReplicationData);
-	DOREPLIFETIME_CONDITION(AGrippableStaticMeshActor, VRGripInterfaceSettings, COND_Custom);
-	DOREPLIFETIME_CONDITION(AGrippableStaticMeshActor, GameplayTags, COND_Custom);
+	// For std properties
+	FDoRepLifetimeParams PushModelParams{ COND_None, REPNOTIFY_OnChanged, /*bIsPushBased=*/true };
+
+	DOREPLIFETIME_WITH_PARAMS_FAST(AGrippableStaticMeshActor, bReplicateGripScripts, PushModelParams);
+	DOREPLIFETIME_WITH_PARAMS_FAST(AGrippableStaticMeshActor, bRepGripSettingsAndGameplayTags, PushModelParams);
+	DOREPLIFETIME_WITH_PARAMS_FAST(AGrippableStaticMeshActor, bAllowIgnoringAttachOnOwner, PushModelParams);
+	DOREPLIFETIME_WITH_PARAMS_FAST(AGrippableStaticMeshActor, ClientAuthReplicationData, PushModelParams);
+
+	// For properties with special conditions
+	FDoRepLifetimeParams PushModelParamsWithCondition{ COND_Custom, REPNOTIFY_OnChanged, /*bIsPushBased=*/true };
+
+	DOREPLIFETIME_WITH_PARAMS_FAST(AGrippableStaticMeshActor, GripLogicScripts, PushModelParamsWithCondition);
+	DOREPLIFETIME_WITH_PARAMS_FAST(AGrippableStaticMeshActor, VRGripInterfaceSettings, PushModelParamsWithCondition);
+	DOREPLIFETIME_WITH_PARAMS_FAST(AGrippableStaticMeshActor, GameplayTags, PushModelParamsWithCondition);
 
 	DISABLE_REPLICATED_PRIVATE_PROPERTY(AActor, AttachmentReplication);
 
@@ -682,6 +689,30 @@ void AGrippableStaticMeshActor::Server_GetClientAuthReplication_Implementation(c
 	}
 }
 
+bool AGrippableStaticMeshActor::ShouldWeSkipAttachmentReplication(bool bConsiderHeld) const
+{
+	if ((bConsiderHeld && !VRGripInterfaceSettings.bWasHeld) || GetNetMode() < ENetMode::NM_Client)
+		return false;
+
+	if (VRGripInterfaceSettings.MovementReplicationType == EGripMovementReplicationSettings::ClientSide_Authoritive ||
+		VRGripInterfaceSettings.MovementReplicationType == EGripMovementReplicationSettings::ClientSide_Authoritive_NoRep)
+	{
+		// First return if we are locally held (owner may not have replicated yet)
+		for (const FBPGripPair& Grip : VRGripInterfaceSettings.HoldingControllers)
+		{
+			if (IsValid(Grip.HoldingController) && Grip.HoldingController->IsLocallyControlled())
+			{
+				return true;
+			}
+		}
+
+		// then return if we have a local net owner
+		return HasLocalNetOwner();
+	}
+	else
+		return false;
+}
+
 void AGrippableStaticMeshActor::OnRep_AttachmentReplication()
 {
 	if (bAllowIgnoringAttachOnOwner && (ClientAuthReplicationData.bIsCurrentlyClientAuth || ShouldWeSkipAttachmentReplication()))
@@ -774,6 +805,12 @@ void AGrippableStaticMeshActor::OnRep_ReplicatedMovement()
 		return;
 	}
 
+	if (VRGripInterfaceSettings.HoldingControllers.Num() > 0)
+	{
+		ShouldWeSkipAttachmentReplication();
+		int gg = 0;
+	}
+
 	Super::OnRep_ReplicatedMovement();
 }
 
@@ -859,3 +896,79 @@ void AGrippableStaticMeshActor::GetSubobjectsWithStableNamesForNetworking(TArray
 		}
 	}
 }
+
+/////////////////////////////////////////////////
+//- Push networking getter / setter functions
+/////////////////////////////////////////////////
+
+void AGrippableStaticMeshActor::SetReplicateGripScripts(bool bNewReplicateGripScripts)
+{
+	bReplicateGripScripts = bNewReplicateGripScripts;
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(AGrippableStaticMeshActor, bReplicateGripScripts, this);
+#endif
+}
+
+TArray<TObjectPtr<UVRGripScriptBase>>& AGrippableStaticMeshActor::GetGripLogicScripts()
+{
+#if WITH_PUSH_MODEL
+	if (bReplicateGripScripts)
+	{
+		MARK_PROPERTY_DIRTY_FROM_NAME(AGrippableStaticMeshActor, GripLogicScripts, this);
+	}
+#endif
+
+	return GripLogicScripts;
+}
+
+void AGrippableStaticMeshActor::SetRepGripSettingsAndGameplayTags(bool bNewRepGripSettingsAndGameplayTags)
+{
+	bRepGripSettingsAndGameplayTags = bNewRepGripSettingsAndGameplayTags;
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(AGrippableStaticMeshActor, bRepGripSettingsAndGameplayTags, this);
+#endif
+}
+
+void AGrippableStaticMeshActor::SetAllowIgnoringAttachOnOwner(bool bNewAllowIgnoringAttachOnOwner)
+{
+	bAllowIgnoringAttachOnOwner = bNewAllowIgnoringAttachOnOwner;
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(AGrippableStaticMeshActor, bAllowIgnoringAttachOnOwner, this);
+#endif
+}
+
+FVRClientAuthReplicationData& AGrippableStaticMeshActor::GetClientAuthReplicationData(FVRClientAuthReplicationData& ClientAuthData)
+{
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(AGrippableStaticMeshActor, ClientAuthReplicationData, this);
+#endif
+	return ClientAuthReplicationData;
+}
+
+FBPInterfaceProperties& AGrippableStaticMeshActor::GetVRGripInterfaceSettings(bool bMarkDirty)
+{
+#if WITH_PUSH_MODEL
+	if (bMarkDirty && bRepGripSettingsAndGameplayTags)
+	{
+		MARK_PROPERTY_DIRTY_FROM_NAME(AGrippableStaticMeshActor, VRGripInterfaceSettings, this);
+	}
+#endif
+
+	return VRGripInterfaceSettings;
+}
+
+FGameplayTagContainer& AGrippableStaticMeshActor::GetGameplayTags()
+{
+#if WITH_PUSH_MODEL
+	if (bRepGripSettingsAndGameplayTags)
+	{
+		MARK_PROPERTY_DIRTY_FROM_NAME(AGrippableStaticMeshActor, GameplayTags, this);
+	}
+#endif
+
+	return GameplayTags;
+}
+
+/////////////////////////////////////////////////
+//- End Push networking getter / setter functions
+/////////////////////////////////////////////////

@@ -8,6 +8,10 @@
 #include "GripMotionControllerComponent.h"
 #include "Net/UnrealNetwork.h"
 
+#if WITH_PUSH_MODEL
+#include "Net/Core/PushModel/PushModel.h"
+#endif
+
   //=============================================================================
 UVRSliderComponent::UVRSliderComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -84,13 +88,20 @@ void UVRSliderComponent::GetLifetimeReplicatedProps(TArray< class FLifetimePrope
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(UVRSliderComponent, InitialRelativeTransform);
-	DOREPLIFETIME(UVRSliderComponent, SplineComponentToFollow);
-	//DOREPLIFETIME_CONDITION(UVRSliderComponent, bIsLerping, COND_InitialOnly);
+	// For std properties
+	FDoRepLifetimeParams PushModelParams{ COND_None, REPNOTIFY_OnChanged, /*bIsPushBased=*/true };
 
-	DOREPLIFETIME(UVRSliderComponent, bRepGameplayTags);
-	DOREPLIFETIME(UVRSliderComponent, bReplicateMovement);
-	DOREPLIFETIME_CONDITION(UVRSliderComponent, GameplayTags, COND_Custom);
+	DOREPLIFETIME_WITH_PARAMS_FAST(UVRSliderComponent, InitialRelativeTransform, PushModelParams);
+	DOREPLIFETIME_WITH_PARAMS_FAST(UVRSliderComponent, SplineComponentToFollow, PushModelParams);
+	//DOREPLIFETIME_CONDITION(UVRDialComponent, bIsLerping, COND_InitialOnly);
+
+	DOREPLIFETIME_WITH_PARAMS_FAST(UVRSliderComponent, bRepGameplayTags, PushModelParams);
+	DOREPLIFETIME_WITH_PARAMS_FAST(UVRSliderComponent, bReplicateMovement, PushModelParams);
+
+	// For properties with special conditions
+	FDoRepLifetimeParams PushModelParamsWithCondition{ COND_Custom, REPNOTIFY_OnChanged, /*bIsPushBased=*/true };
+
+	DOREPLIFETIME_WITH_PARAMS_FAST(UVRSliderComponent, GameplayTags, PushModelParamsWithCondition);
 }
 
 void UVRSliderComponent::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
@@ -734,7 +745,12 @@ FVector UVRSliderComponent::ClampSlideVector(FVector ValueToClamp)
 	FVector MinScale = (bUseLegacyLogic ? MinSlideDistance : MinSlideDistance.GetAbs()) * fScaleFactor;
 
 	FVector Dist = (bUseLegacyLogic ? (MinSlideDistance + MaxSlideDistance) : (MinSlideDistance.GetAbs() + MaxSlideDistance.GetAbs())) * fScaleFactor;
-	FVector Progress = (ValueToClamp - (-MinScale)) / Dist;
+	FVector Progress{
+	Dist.X > 0.0f ? (ValueToClamp.X - (-MinScale.X)) / Dist.X : 0.f,
+	Dist.Y > 0.0f ? (ValueToClamp.Y - (-MinScale.Y)) / Dist.Y : 0.f,
+	Dist.Z > 0.0f ? (ValueToClamp.Z - (-MinScale.Z)) / Dist.Z : 0.f,
+	};
+
 
 	if (bSliderUsesSnapPoints)
 	{
@@ -892,6 +908,10 @@ void UVRSliderComponent::SetSplineComponentToFollow(USplineComponent * SplineToF
 {
 	SplineComponentToFollow = SplineToFollow;
 	
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(UVRSliderComponent, SplineComponentToFollow, this);
+#endif
+
 	if (SplineToFollow != nullptr)
 		ResetToParentSplineLocation();
 	else
@@ -902,6 +922,11 @@ void UVRSliderComponent::ResetInitialSliderLocation()
 {
 	// Get our initial relative transform to our parent (or not if un-parented).
 	InitialRelativeTransform = this->GetRelativeTransform();
+
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(UVRSliderComponent, InitialRelativeTransform, this);
+#endif
+
 	ResetToParentSplineLocation();
 
 	if (SplineComponentToFollow == nullptr)
@@ -985,4 +1010,32 @@ float UVRSliderComponent::CalculateSliderProgress()
 	}
 
 	return CurrentSliderProgress;
+}
+
+void UVRSliderComponent::SetRepGameplayTags(bool bNewRepGameplayTags)
+{
+	bRepGameplayTags = bNewRepGameplayTags;
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(UVRSliderComponent, bRepGameplayTags, this);
+#endif
+}
+
+void UVRSliderComponent::SetReplicateMovement(bool bNewReplicateMovement)
+{
+	bReplicateMovement = bNewReplicateMovement;
+#if WITH_PUSH_MODEL
+	MARK_PROPERTY_DIRTY_FROM_NAME(UVRSliderComponent, bReplicateMovement, this);
+#endif
+}
+
+FGameplayTagContainer& UVRSliderComponent::GetGameplayTags()
+{
+#if WITH_PUSH_MODEL
+	if (bRepGameplayTags)
+	{
+		MARK_PROPERTY_DIRTY_FROM_NAME(UVRSliderComponent, GameplayTags, this);
+	}
+#endif
+
+	return GameplayTags;
 }

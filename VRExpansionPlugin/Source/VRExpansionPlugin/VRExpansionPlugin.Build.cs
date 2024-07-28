@@ -59,20 +59,14 @@ public class VRExpansionPlugin : ModuleRules
                     "NetCore",
                     "CoreUObject",
                     "Engine",
-                   // "InputCore",
                     "PhysicsCore",
-                    //"FLEX", remove comment if building in the NVIDIA flex branch - NOTE when put in place FLEX only listed win32 and win64 at compatible platforms
                     "HeadMountedDisplay",
-                   // "RHI",
-                    //"RenderCore",
-                    //"ShaderCore",
-                    //"NetworkReplayStreaming",
-                    //"AIModule",
                     "UMG",
                     "NavigationSystem",
                     "AIModule",
                     "AnimGraphRuntime",
                     "XRBase",
+<<<<<<< HEAD
                     "GameplayTags"
                     //"Renderer",
                     //"UtilityShaders"
@@ -82,6 +76,10 @@ public class VRExpansionPlugin : ModuleRules
                     , "GameplayAbilities"
                     , "CommonGame"
                     , "ModularGameplayActors"
+=======
+                    "GameplayTags",
+                    "Mover"
+>>>>>>> 13c273fff9a618945a9e1338551467df165fe38b
         });
 
         //if(Target.bUseChaos)
@@ -119,20 +117,6 @@ public class VRExpansionPlugin : ModuleRules
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);
-
-        // Don't load APEX on incompatible platforms
-       /* if (
-            Target.Platform != UnrealTargetPlatform.IOS &&
-            Target.Platform != UnrealTargetPlatform.TVOS &&
-            Target.Platform != UnrealTargetPlatform.Android &&
-            Target.Platform != UnrealTargetPlatform.HTML5)
-        {
-            PublicDependencyModuleNames.AddRange(
-            new string[]
-            {                   
-             "APEX"
-            });
-        }*/
 
         // Allow gameplay debugger on editor builds
         if (Target.bBuildDeveloperTools || (Target.Configuration != UnrealTargetConfiguration.Shipping && Target.Configuration != UnrealTargetConfiguration.Test))

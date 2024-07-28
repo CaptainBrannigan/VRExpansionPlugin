@@ -19,6 +19,7 @@
 #include "Navigation/PathFollowingComponent.h"
 #include "VRPlayerController.h"
 #include "GameFramework/PhysicsVolume.h"
+#include "Animation\AnimInstance.h"
 
 
 DEFINE_LOG_CATEGORY(LogVRBaseCharacterMovement);
@@ -1620,11 +1621,17 @@ void UVRBaseCharacterMovementComponent::OnClientCorrectionReceived(class FNetwor
 	{
 		BaseVRCharacterOwner->OnCharacterNetworkCorrected_Bind.Broadcast();
 
-		if(IsValid(BaseVRCharacterOwner->LeftMotionController))
+		if (IsValid(BaseVRCharacterOwner->LeftMotionController))
+		{
 			BaseVRCharacterOwner->LeftMotionController->TeleportMoveGrips(false, false);
+			BaseVRCharacterOwner->LeftMotionController->PostTeleportMoveGrippedObjects();
+		}
 
 		if (IsValid(BaseVRCharacterOwner->RightMotionController))
+		{
 			BaseVRCharacterOwner->RightMotionController->TeleportMoveGrips(false, false);
+			BaseVRCharacterOwner->RightMotionController->PostTeleportMoveGrippedObjects();
+		}
 		//BaseVRCharacterOwner->NotifyOfTeleport(false);
 	}
 }
@@ -1887,6 +1894,9 @@ void UVRBaseCharacterMovementComponent::MoveAutonomous(
 
 	const bool bWasPlayingRootMotion = CharacterOwner->IsPlayingRootMotion();
 
+	// Scope these, they nest with Outer references so it should work fine, this keeps the update rotation and move autonomous from double updating the char
+	//const FScopedPreventAttachedComponentMove PreventMeshMove(BaseVRCharacterOwner ? BaseVRCharacterOwner->NetSmoother : nullptr);
+
 	PerformMovement(DeltaTime);
 
 	// Check if data is valid as PerformMovement can mark character for pending kill
@@ -1904,12 +1914,31 @@ void UVRBaseCharacterMovementComponent::MoveAutonomous(
 		}
 		// TODO: SaveBaseLocation() in case tick moves us?
 
+
+		USkeletalMeshComponent* OwnerMesh = CharacterOwner->GetMesh();
+		check(OwnerMesh != nullptr)
+
 		static const auto CVarEnableQueuedAnimEventsOnServer = IConsoleManager::Get().FindConsoleVariable(TEXT("a.EnableQueuedAnimEventsOnServer"));
-		if (!CVarEnableQueuedAnimEventsOnServer->GetInt() || CharacterOwner->GetMesh()->ShouldOnlyTickMontages(DeltaTime))
+		if (CVarEnableQueuedAnimEventsOnServer->GetInt())
 		{
-			// If we're not doing a full anim graph update on the server, 
-			// trigger events right away, as we could be receiving multiple ServerMoves per frame.
-			CharacterOwner->GetMesh()->ConditionallyDispatchQueuedAnimEvents();
+			if (const UAnimInstance* AnimInstance = OwnerMesh->GetAnimInstance())
+			{
+				if (OwnerMesh->VisibilityBasedAnimTickOption <= EVisibilityBasedAnimTickOption::AlwaysTickPose && AnimInstance->NeedsUpdate())
+				{
+					// If we are doing a full graph update on the server but its doing a parallel update,
+					// trigger events right away since these are notifies queued from the montage update and we could be receiving multiple ServerMoves per frame.
+					OwnerMesh->ConditionallyDispatchQueuedAnimEvents();
+					OwnerMesh->AllowQueuedAnimEventsNextDispatch();
+				}
+			}
+		}
+		else
+		{
+			// Revert back to old behavior if wanted/needed.
+			if (OwnerMesh->ShouldOnlyTickMontages(DeltaTime))
+			{
+				OwnerMesh->ConditionallyDispatchQueuedAnimEvents();
+			}
 		}
 	}
 
@@ -2229,9 +2258,10 @@ void UVRBaseCharacterMovementComponent::UpdateFromCompressedFlags(uint8 Flags)
 FVector UVRBaseCharacterMovementComponent::RoundDirectMovement(FVector InMovement) const
 {
 	// Match FVector_NetQuantize100 (2 decimal place of precision).
-	InMovement.X = FMath::RoundToFloat(InMovement.X * 100.f) / 100.f;
-	InMovement.Y = FMath::RoundToFloat(InMovement.Y * 100.f) / 100.f;
-	InMovement.Z = FMath::RoundToFloat(InMovement.Z * 100.f) / 100.f;
+	UE::Net::QuantizeVector(100, InMovement);
+	//InMovement.X = FMath::RoundToFloat(InMovement.X * 100.f) / 100.f;
+	//InMovement.Y = FMath::RoundToFloat(InMovement.Y * 100.f) / 100.f;
+	//InMovement.Z = FMath::RoundToFloat(InMovement.Z * 100.f) / 100.f;
 	return InMovement;
 }
 
@@ -2378,5 +2408,5 @@ bool UVRBaseCharacterMovementComponent::SetCharacterToNewGravity(FVector NewGrav
 		return true;
 	}
 
-	return false;
+	//return false;
 }
