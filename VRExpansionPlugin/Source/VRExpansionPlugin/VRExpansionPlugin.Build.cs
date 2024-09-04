@@ -66,21 +66,14 @@ public class VRExpansionPlugin : ModuleRules
                     "AIModule",
                     "AnimGraphRuntime",
                     "XRBase",
-<<<<<<< HEAD
-                    "GameplayTags"
-                    //"Renderer",
-                    //"UtilityShaders"
-                    , "LyraGame"
-                    , "GameplayTags"
-                    , "GameplayTasks"
-                    , "GameplayAbilities"
-                    , "CommonGame"
-                    , "ModularGameplayActors"
-=======
                     "GameplayTags",
                     "Mover"
->>>>>>> 13c273fff9a618945a9e1338551467df165fe38b
-        });
+					, "LyraGame"
+					, "GameplayTasks"
+					, "GameplayAbilities"
+					, "CommonGame"
+					, "ModularGameplayActors"
+		});
 
         //if(Target.bUseChaos)
        // {
