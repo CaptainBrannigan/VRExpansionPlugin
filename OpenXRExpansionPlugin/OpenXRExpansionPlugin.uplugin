@@ -37,7 +37,12 @@
 	"Plugins": [
 		{
 			"Name": "OpenXR",
-			"Enabled": true
+			"Enabled": true,
+			"PlatformAllowList": [
+			"Win64",
+			"Linux",
+			"Android"
+     ]
 		},
 		{
 			"Name": "XRBase",
@@ -45,3 +50,4 @@
 		}
 	]
 }
+
