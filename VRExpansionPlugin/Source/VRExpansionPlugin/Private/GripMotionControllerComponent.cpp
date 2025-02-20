@@ -7214,10 +7214,10 @@ void UGripMotionControllerComponent::ApplyTrackingParameters(FVector& OriginalPo
 				if (GEngine->XRSystem->GetCurrentPose(IXRTrackingSystem::HMDDeviceId, curRot, curLoc))
 				{
 
-					if (IsValid(AttachChar) && AttachChar->VRReplicatedCamera)
+					/*if (IsValid(AttachChar) && AttachChar->VRReplicatedCamera)
 					{
 						AttachChar->VRReplicatedCamera->ApplyTrackingParameters(curLoc, true);
-					}
+					}*/
 
 					//curLoc.Z = 0;
 					LastLocationForLateUpdate = curLoc;
@@ -7234,7 +7234,7 @@ void UGripMotionControllerComponent::ApplyTrackingParameters(FVector& OriginalPo
 				if (IsValid(AttachChar) && AttachChar->VRReplicatedCamera)
 				{
 					// Sample camera location instead
-					LastLocationForLateUpdate = AttachChar->VRReplicatedCamera->GetRelativeLocation();
+					LastLocationForLateUpdate = AttachChar->VRReplicatedCamera->ReplicatedCameraTransform.Position; //GetRelativeLocation();
 
 					if (!AttachChar->bRetainRoomscale && IsLocallyControlled())
 					{
@@ -8334,12 +8334,12 @@ void UGripMotionControllerComponent::GetHandType(EControllerHand& Hand)
 	{
 		// Check if the palm motion source extension is being used
 		// I assume eventually epic will handle this case
-		if (MotionSource.Compare(FName(TEXT("RightPalm"))) == 0)
+		if (MotionSource.Compare(FName(TEXT("RightPalm"))) == 0 || MotionSource.Compare(FName(TEXT("RightWrist"))) == 0)
 		{
 			Hand = EControllerHand::Right;
 		}
 		// Could skip this and default to left now but would rather check
-		else if (MotionSource.Compare(FName(TEXT("LeftPalm"))) == 0)
+		else if (MotionSource.Compare(FName(TEXT("LeftPalm"))) == 0 || MotionSource.Compare(FName(TEXT("LeftWrist"))) == 0)
 		{
 			Hand = EControllerHand::Left;
 		}

@@ -272,24 +272,34 @@ void UVRDialComponent::OnGripRelease_Implementation(UGripMotionControllerCompone
 		float AngleOffsetCheck = FMath::Abs(FRotator::ClampAxis(CurRotBackEnd) - FRotator::ClampAxis(LastSnapAngle));
 		float TargetSnap = FMath::RoundToFloat(FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement));
 
-		if (FMath::Abs(FRotator::ClampAxis(CurRotBackEnd) - TargetSnap) <= FMath::Min(SnapAngleIncrement, SnapAngleThreshold))
+		if (FMath::Abs(/*FRotator::ClampAxis(*/CurRotBackEnd/*)*/ - TargetSnap) <= FMath::Min(SnapAngleIncrement, SnapAngleThreshold))
 		{
 			if (AngleOffsetCheck >= SnapAngleThreshold)//FMath::Min(SnapAngleIncrement, SnapAngleThreshold))
 			{
 				this->SetRelativeRotation((FTransform(UVRInteractibleFunctionLibrary::SetAxisValueRot(DialRotationAxis, FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement), FRotator::ZeroRotator)) * InitialRelativeTransform).Rotator());
 				CurRotBackEnd = FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement);
+				
+				if (bUseRollover)
+				{
+					CurrentDialAngle = FMath::RoundToFloat(CurRotBackEnd);
+				}
+				else
+				{
+					CurrentDialAngle = FRotator::ClampAxis(FMath::RoundToFloat(CurRotBackEnd));
+				}
 			}
-		}
-
-		if (bUseRollover)
-		{
-			CurrentDialAngle = FMath::RoundToFloat(CurRotBackEnd);
+			else
+			{
+				// Reset to the snap angle so that it requires full motion to break out of it
+				CurRotBackEnd = CurrentDialAngle;
+			}
 		}
 		else
 		{
-			CurrentDialAngle = FRotator::ClampAxis(FMath::RoundToFloat(CurRotBackEnd));
+			// Reset to the snap angle so that it requires full motion to break out of it
+			CurRotBackEnd = CurrentDialAngle;
 		}
-		
+
 		if (!FMath::IsNearlyEqual(LastSnapAngle, CurrentDialAngle))
 		{
 			ReceiveDialHitSnapAngle(CurrentDialAngle);
@@ -582,7 +592,7 @@ void UVRDialComponent::AddDialAngle(float DialAngleDelta, bool bCallEvents, bool
 		float AngleOffsetCheck = FMath::Abs(FRotator::ClampAxis(CurRotBackEnd) - FRotator::ClampAxis(LastSnapAngle));
 		float TargetSnap = FMath::RoundToFloat(FMath::GridSnap(CurRotBackEnd, SnapAngleIncrement));
 
-		if (FMath::Abs(FRotator::ClampAxis(CurRotBackEnd) - TargetSnap) <= FMath::Min(SnapAngleIncrement, SnapAngleThreshold))
+		if (FMath::Abs(/*FRotator::ClampAxis(*/CurRotBackEnd/*)*/ - TargetSnap) <= FMath::Min(SnapAngleIncrement, SnapAngleThreshold))
 		{
 			if (AngleOffsetCheck >= SnapAngleThreshold)//FMath::Min(SnapAngleIncrement, SnapAngleThreshold))
 			{
